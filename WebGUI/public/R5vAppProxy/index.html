@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Remote5 vApp Proxy" />
+    <title>Remote5 vApp Proxy</title>
+    <script type="text/javascript" src="wbase_vapp-0.1.2.js"></script>
+    <script type="text/javascript" src="R5vAppRelay-0.1.js"></script>
+  </head>
+
+  <style type="text/css">
+    html, body {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      background-color: #333;
+
+    }
+
+    body {
+      position: relative;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      left: 0;
+      top: 0;
+      overflow: hidden;
+      user-select: none;
+      -webkit-text-size-adjust: none;
+    }
+
+    #www {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background-color: #fff;
+      display: none;
+    }
+  </style>
+
+  <body>
+     <iframe id='www'></iframe>
+  </body>
+
+  <script type="text/javascript">
+    var s_ifrm = document.getElementById('www');
+    var s_wBaseVApp = null;
+    window.s_urlRoot = "";
+    window.s_url = "../index.html";
+    var port_number = 1080;
+
+    window.s_connection = null;
+
+    window.onload = function () {
+      window.s_connection = new WebSocket("ws://localhost:"+port_number+"/api/");
+      window.s_connection.onopen = function () {
+        this.send("{}");
+        console.log("main-connection open");
+      };
+      window.s_connection.onmessage = function (evt) {
+        var rcv = evt.data;
+        if (rcv.length > 0 && rcv[0] == '{') {
+          var jmsg = JSON.parse(rcv);
+          if (jmsg.code != null && jmsg.code != 0) {
+            alert(jmsg.msg);
+            this.close();
+          } else {
+            console.log("main-connection ok: " + rcv);
+            window.s_connection.send("event:{\"type\":\"state\",\"use\":true}");
+            var owww = document.getElementById("www");
+            owww.src = window.s_urlRoot + window.s_url;
+          }
+        } else {
+          var nd = rcv.indexOf(':');
+          var key = rcv.substring(0, nd);
+          var data = rcv.substring(nd + 1);
+          if (key == "state") {
+            var ret = JSON.parse(data);
+            if (ret.state == "environment") {
+              server_environment = ret;
+              updateLayout();
+            } else {
+              if (s_wBaseVApp)
+                s_wBaseVApp.setState(ret.state, ret);
+            }
+          } else {
+            var idCmd = parseInt(key);
+            var ret = JSON.parse(data);
+            s_wBaseVApp.notify(idCmd, ret);
+          }
+        }
+      };
+      window.s_connection.onclose = function () {
+        window.s_connection = null;
+        console.log("Connection is closed"); //!!
+        var owww = document.getElementById("www");
+        owww.style.display = "none";
+        //var win = window.open("", "_self");
+        //win.close();
+      };
+    }
+
+    s_ifrm.onload = function () {
+      var owww = document.getElementById("www");
+      owww.style.display = "block";
+
+      var src = owww.src;
+      if (src == null)
+        return;
+
+      var win = s_ifrm.contentWindow;
+      try {
+        if (win.document != null) {
+          var ms = win.document.getElementsByTagName('meta');
+          for (var i in ms) {
+            if (ms[i].name == null || ms[i].name.toUpperCase() != 'REMOTE5')
+              continue;
+            var so = ms[i].content.split("=");
+            if (so[0] == "screen-orientation") {
+              if (so[1] == "portrait") {
+                SetScreenOrientation(1);
+                return;
+              } else if (so[1] == "landscape") {
+                SetScreenOrientation(2);
+                return;
+              }
+            }
+            break;
+          }
+        }
+      }
+      catch (e) {
+        alert("This browser does not support emulation of Remote5.wBase");
+      }
+
+      SetScreenOrientation(0);
+    };
+
+    var server_environment = {};
+
+    function makeDeviceInfo() {
+      return { };
+    }
+
+    function makeStateEnvironment() {
+      var baseWidth = 1920; //@@
+      if (server_environment.display_scale == null)
+        server_environment.display_scale = 1;
+      server_environment.screen_density = window.innerWidth / baseWidth / server_environment.display_scale;
+      //var json = {};
+      //json.locale = $('#locale_lang').val();
+      //json.screen_density = server_environment.screen_density != null ? server_environment.screen_density : window.devicePixelRatio;
+      //json.monitors = server_environment.monitors;
+      //json.index_monitor_launcher = server_environment.index_monitor_launcher;
+      return server_environment;
+    }
+
+    function SetScreenOrientation(so) {
+      var win = s_ifrm.contentWindow;
+      try {
+        var www_R5wBase = win.R5.wBase;
+        s_wBaseVApp = new window.R5.wBaseVApp(www_R5wBase, onwBaseVApp, { device: makeDeviceInfo(), environment: makeStateEnvironment() });
+        if (www_R5wBase != null)
+          setTimeout(function () { www_R5wBase.w2a.start(s_wBaseVApp); }, 100);
+
+        //updateStateBtns();
+      }
+      catch (e) {
+      }
+
+      updateLayout();
+    }
+    window.onresize = updateLayout;
+
+    function onwBaseVApp(evt) {
+      if (evt.type == "state") {
+        if (evt.state == "close") {
+          var owww = document.getElementById("www");
+          owww.style.display = "none";
+        }
+      } else {
+        if (evt.type == "SHOWTOAST") {
+          alert(evt.args.msg);
+        } else if (window.s_connection != null)
+          var pckt = evt.type + ":" + JSON.stringify(evt.args);
+          if (pckt == null)
+            return;
+          var len = pckt.length;
+          window.s_connection.send(pckt);
+      }
+    }
+
+    var s_tmoEnvironment = null;
+
+    function updateLayout() {
+      if (s_tmoEnvironment != null)
+        clearTimeout(s_tmoEnvironment);
+      s_tmoEnvironment = setTimeout(function() {
+        s_tmoEnvironment = null;
+        if (s_wBaseVApp)
+          s_wBaseVApp.setState('environment', makeStateEnvironment());
+      }, 100);
+    }
+  </script>
+</html>

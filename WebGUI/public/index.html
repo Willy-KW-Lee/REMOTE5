@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CodeReachHome</title>
+    <script type="text/javascript" src="%PUBLIC_URL%/inc/wbase-0.1.2.js"></script>
+    <script type="text/javascript" src="%PUBLIC_URL%/inc/wlang-0.1.4.js"></script>
+    <script type="text/javascript" src="%PUBLIC_URL%/inc/wstyle-0.3.3.js"></script>
+    <script type="text/javascript" src="%PUBLIC_URL%/inc/common.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+  <script>
+    function r5_main() {
+      //@ Added for development environment.
+      //  Remove the following when releasing!
+      if (location.href.indexOf("index") < 0)
+        location.href = "../R5vAppProxy";
+    }
+
+    function r5_start() {
+      null!=window.startReactDOM ? window.startReactDOM() : (window.startReactDOM = true);
+    }
+  </script>
+</html>
