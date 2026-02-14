@@ -69,7 +69,7 @@ namespace WinFormsApp
         {
             try
             {
-                string execFolder = null;
+                string? execFolder = null;
                 string tempWebCacheDir = System.IO.Path.GetTempPath();
                 tempWebCacheDir = System.IO.Path.Combine(tempWebCacheDir, System.Guid.NewGuid().ToString("N"));
                 CoreWebView2Environment webView2Environment = await CoreWebView2Environment.CreateAsync(execFolder, tempWebCacheDir);
@@ -104,7 +104,7 @@ namespace WinFormsApp
         {
             UpdateLayout();
 
-            stateEnvironment(this);
+            stateEnvironment(this, _use_state);
         }
 
         private void Form_FormClosed(object? sender, FormClosedEventArgs e)
@@ -134,12 +134,12 @@ namespace WinFormsApp
 
 #if !DEBUG
             webView21.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
-#endif //DEBUG
             webView21.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+#endif //DEBUG
 
             try
             {
-                string path = Path.GetDirectoryName(Application.ExecutablePath);
+                string path = Path.GetDirectoryName(Application.ExecutablePath)!;
                 webView21.CoreWebView2.SetVirtualHostNameToFolderMapping(ROOT_ADDR, path + "\\gui",
                     Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
             }
@@ -161,6 +161,7 @@ namespace WinFormsApp
             webView21.CoreWebView2.ExecuteScriptAsync(exc);
         }
 
+        bool _use_state = false;
         private void WebView21_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
         {
             string cmd = e.TryGetWebMessageAsString();
@@ -178,14 +179,14 @@ namespace WinFormsApp
                 try
                 {
                     JObject args = JObject.Parse(cmd);
-                    string strType = args["type"].ToString();
-                    _use_state = (bool)args["use"];
+                    string strType = args["type"]!.ToString();
+                    _use_state = (bool)args["use"]!;
                     switch (strType)
                     {
                         case "state":
                             if (_use_state)
                             {
-                                stateEnvironment(this);
+                                stateEnvironment(this, true);
 
                                 JObject json = new JObject();
                                 json.Add("state", "resume");
@@ -200,15 +201,7 @@ namespace WinFormsApp
                 return;
             }
 
-            const string szExitApp = "EXIT_APP:";
-            if (cmd.IndexOf(szExitApp) == 0)
-            {
-                //ShutdownIfy();
-                Application.Exit();
-                return;
-            }
-
-            OnR5Command(cmd, this);
+            MessageReceived(cmd, this);
         }
 
 
@@ -217,9 +210,40 @@ namespace WinFormsApp
             webView21.CoreWebView2.ExecuteScriptAsync("window.R5.wBase.evt.event(\"" + type + "\"," + arg + ")");
         }
 
+        bool _use_state_proxy = false;
         public void R5vAppProxy_MessageFromProxy(string cmd)
         {
-            MessageReceived(cmd, _R5vAppProxy == null ? this : _R5vAppProxy);
+            // register event handler
+            const string szEvent = "event:";
+            if (cmd.IndexOf(szEvent) == 0)
+            {
+                cmd = cmd.Substring(szEvent.Length);
+                try
+                {
+                    JObject args = JObject.Parse(cmd);
+                    string strType = args["type"]!.ToString();
+                    _use_state_proxy = (bool)args["use"]!;
+                    switch (strType)
+                    {
+                        case "state":
+                            if (_use_state_proxy)
+                            {
+                                stateEnvironment(_R5vAppProxy, true);
+
+                                JObject json = new JObject();
+                                json.Add("state", "resume");
+                                _R5vAppProxy.R5vAppProxy_Event("state", json.ToString(Newtonsoft.Json.Formatting.None));
+                            }
+                            break;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                return;
+            }
+
+            MessageReceived(cmd, _R5vAppProxy);
         }
 
         public void R5vAppProxy_Notify(int key, string arg)
@@ -235,39 +259,8 @@ namespace WinFormsApp
             catch { }
         }
 
-        bool _use_state = false;
         private void MessageReceived(string cmd, IR5vAppProxy ivApp)
         {
-            // register event handler
-            const string szEvent = "event:";
-            if (cmd.IndexOf(szEvent) == 0)
-            {
-                cmd = cmd.Substring(szEvent.Length);
-                try
-                {
-                    JObject args = JObject.Parse(cmd);
-                    string strType = args["type"].ToString();
-                    _use_state = (bool)args["use"];
-                    switch (strType)
-                    {
-                        case "state":
-                            if (_use_state)
-                            {
-                                stateEnvironment(ivApp);
-
-                                JObject json = new JObject();
-                                json.Add("state", "resume");
-                                ivApp.R5vAppProxy_Event("state", json.ToString(Newtonsoft.Json.Formatting.None));
-                            }
-                            break;
-                    }
-                }
-                catch (Exception)
-                {
-                }
-                return;
-            }
-
             const string szExitApp = "EXIT_APP:";
             if (cmd.IndexOf(szExitApp) == 0)
             {
@@ -287,9 +280,9 @@ namespace WinFormsApp
         public static extern int GetLocaleInfoEx(String lpLocaleName, LCTYPE LCType, StringBuilder lpLCData, int cchData);
 
         int _widthForm = 1;
-        private void stateEnvironment(IR5vAppProxy ivApp)//(enum all, kr, ...)
+        private void stateEnvironment(IR5vAppProxy ivApp, bool use_state)//(enum all, kr, ...)
         {
-            if (!_use_state)
+            if (!use_state)
                 return;
 
             JObject json = new JObject();
@@ -345,7 +338,7 @@ namespace WinFormsApp
             try
             {
                 JObject args = JObject.Parse(cmd);
-                r5Id = (int)args["__ID__"];
+                r5Id = (int)args["__ID__"]!;
             }
             catch (Exception)
             {

@@ -47,8 +47,6 @@ function onState( args )
 	{
 		if ( args.locale )
 			r5_locale(args.locale);
-		else
-			r5_locale("en-US");
 		
 		if ( args.screen_density )
       updateScreenDensity(args.screen_density);
