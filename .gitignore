@@ -1,7 +1,8 @@
-/WebGUI/node_modules
-/WinFormsApp/.vs
-/WinFormsApp/obj
+WebGUI/.vscode
+WebGUI/node_modules
 WebGUI/build
+WinFormsApp/.vs
+WinFormsApp/obj
 WinFormsApp/WinFormsApp.csproj.user
 WinFormsApp/bin/Debug/net10.0-windows/WinFormsApp.dll
 WinFormsApp/bin/Debug/net10.0-windows/Newtonsoft.Json.dll
@@ -9,3 +10,8 @@ WinFormsApp/bin/Debug/net10.0-windows/WinFormsApp.deps.json
 WinFormsApp/bin/Debug/net10.0-windows/WinFormsApp.exe
 WinFormsApp/bin/Debug/net10.0-windows/WinFormsApp.pdb
 WinFormsApp/bin/Debug/net10.0-windows/WinFormsApp.runtimeconfig.json
+WinFormsApp/bin/Release
+WinFormsApp/bin/Debug/net10.0-windows/runtimes
+WinFormsApp/bin/Debug/net10.0-windows/*.dll
+WinFormsApp/bin/Debug/net10.0-windows/*.xml
+WinFormsApp/bin/Debug/net10.0-windows/gui

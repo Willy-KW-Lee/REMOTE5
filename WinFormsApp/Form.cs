@@ -1,3 +1,5 @@
+using Microsoft.Web.WebView2.Core;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -7,13 +9,52 @@ namespace WinFormsApp
 {
     public partial class Form : System.Windows.Forms.Form, IR5vAppProxy
     {
+        const string ROOT_ADDR = "local";
+        public static string ROOT_URL
+        {
+            get { return "http://" + ROOT_ADDR + "/"; }
+        }
+
         R5vAppProxy? _R5vAppProxy = null;
+
+        [DllImport("kernel32.dll")]
+        static extern IntPtr LoadLibrary(string dllToLoad);
+        [DllImport("kernel32.dll")]
+        static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
+
+        IntPtr _hDllvCatchStation3 = IntPtr.Zero;
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        delegate IntPtr FnvCatchStation3_Open();
+        FnvCatchStation3_Open? _vCatchStation3_Open = null;
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        delegate int FnvCatchStation3_Close(IntPtr hvCatchStation3);
+        FnvCatchStation3_Close? _vCatchStation3_Close = null;
+
+        IntPtr _hvCatchStation3 = IntPtr.Zero;
 
         public Form()
         {
             InitializeComponent();
+            this.Load += Form_Load;
             this.FormClosed += Form_FormClosed;
             this.SizeChanged += Form_SizeChanged;
+
+            this.MinimumSize = new Size(640, 400);
+
+            webView21.CoreWebView2InitializationCompleted += WebView21_CoreWebView2InitializationCompleted;
+            webView21.NavigationCompleted += WebView21_NavigationCompleted;
+            webView21.WebMessageReceived += WebView21_WebMessageReceived;
+
+            _hDllvCatchStation3 = LoadLibrary("vCatchStation3.dll");
+            if (_hDllvCatchStation3 != IntPtr.Zero)
+            {
+                IntPtr fn = GetProcAddress(_hDllvCatchStation3, "vCatchStation3_Open");
+                if (fn != IntPtr.Zero)
+                    _vCatchStation3_Open = (FnvCatchStation3_Open)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnvCatchStation3_Open));
+                fn = GetProcAddress(_hDllvCatchStation3, "vCatchStation3_Close");
+                if (fn != IntPtr.Zero)
+                    _vCatchStation3_Close = (FnvCatchStation3_Close)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnvCatchStation3_Close));
+            }
 
 #if DEBUG
             _R5vAppProxy = new R5vAppProxy();
@@ -24,13 +65,56 @@ namespace WinFormsApp
 #endif //DEBUG
         }
 
+        private async void Form_Load(object? sender, EventArgs e)
+        {
+            try
+            {
+                string execFolder = null;
+                string tempWebCacheDir = System.IO.Path.GetTempPath();
+                tempWebCacheDir = System.IO.Path.Combine(tempWebCacheDir, System.Guid.NewGuid().ToString("N"));
+                CoreWebView2Environment webView2Environment = await CoreWebView2Environment.CreateAsync(execFolder, tempWebCacheDir);
+                await webView21.EnsureCoreWebView2Async(webView2Environment);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+                Application.Exit();
+                return;
+            }
+            ((System.ComponentModel.ISupportInitialize)(this.webView21)).EndInit();
+
+            CoreWebView2Settings webView2Settings = this.webView21.CoreWebView2.Settings;
+            webView2Settings.IsPinchZoomEnabled = false;
+            webView2Settings.IsZoomControlEnabled = false;
+
+            UpdateLayout();
+
+            if (_vCatchStation3_Open != null)
+                _hvCatchStation3 = _vCatchStation3_Open();
+        }
+
+        void UpdateLayout()
+        {
+            this.webView21.Left = this.webView21.Top = 0;
+            this.webView21.Width = this.ClientSize.Width;
+            this.webView21.Height = this.ClientSize.Height;
+        }
+
         private void Form_SizeChanged(object? sender, EventArgs e)
         {
-            stateEnvironment(_R5vAppProxy == null ? this : _R5vAppProxy);
+            UpdateLayout();
+
+            stateEnvironment(this);
         }
 
         private void Form_FormClosed(object? sender, FormClosedEventArgs e)
         {
+            if (_vCatchStation3_Close != null && _hvCatchStation3 != IntPtr.Zero)
+            {
+                _vCatchStation3_Close(_hvCatchStation3);
+                _hvCatchStation3 = IntPtr.Zero;
+            }
+
             if (_R5vAppProxy != null)
             {
                 _R5vAppProxy.Close();
@@ -38,21 +122,117 @@ namespace WinFormsApp
             }
         }
 
+        private void WebView21_CoreWebView2InitializationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2InitializationCompletedEventArgs e)
+        {
+            Trace.WriteLine("CoreWebView2InitializationCompleted event");
+            if (webView21 == null || webView21.CoreWebView2 == null || webView21.CoreWebView2.Settings == null)
+            {
+                Trace.WriteLine("not ready");
+                Application.Exit();
+                return;
+            }
+
+#if !DEBUG
+            webView21.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
+#endif //DEBUG
+            webView21.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+
+            try
+            {
+                string path = Path.GetDirectoryName(Application.ExecutablePath);
+                webView21.CoreWebView2.SetVirtualHostNameToFolderMapping(ROOT_ADDR, path + "\\gui",
+                    Microsoft.Web.WebView2.Core.CoreWebView2HostResourceAccessKind.Allow);
+            }
+            catch
+            {
+                MessageBox.Show("Contents, GUI folders don't exist!");
+                Application.Exit();
+                return;
+            }
+
+            webView21.Source = new System.Uri(ROOT_URL + "index.html");
+        }
+
+        private void WebView21_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+        {
+            string exc = "var o=window.R5; if(o && o.wBase && o.wBase.w2a)o.wBase.w2a.start(function(c){";
+            exc += "window.chrome.webview.postMessage(c)";
+            exc += "})";
+            webView21.CoreWebView2.ExecuteScriptAsync(exc);
+        }
+
+        private void WebView21_WebMessageReceived(object sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            string cmd = e.TryGetWebMessageAsString();
+            const string wBase = "wBase:";
+            int nd = cmd.IndexOf(wBase);
+            if (nd != 0)
+                return;
+            cmd = cmd.Substring(wBase.Length);
+
+            // register event handler
+            const string szEvent = "event:";
+            if (cmd.IndexOf(szEvent) == 0)
+            {
+                cmd = cmd.Substring(szEvent.Length);
+                try
+                {
+                    JObject args = JObject.Parse(cmd);
+                    string strType = args["type"].ToString();
+                    _use_state = (bool)args["use"];
+                    switch (strType)
+                    {
+                        case "state":
+                            if (_use_state)
+                            {
+                                stateEnvironment(this);
+
+                                JObject json = new JObject();
+                                json.Add("state", "resume");
+                                webView21.CoreWebView2.ExecuteScriptAsync("window.R5.wBase.evt.event(\"state\"," + json.ToString(Formatting.None) + ")");
+                            }
+                            break;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                return;
+            }
+
+            const string szExitApp = "EXIT_APP:";
+            if (cmd.IndexOf(szExitApp) == 0)
+            {
+                //ShutdownIfy();
+                Application.Exit();
+                return;
+            }
+
+            OnR5Command(cmd, this);
+        }
+
+
         public void R5vAppProxy_Event(string type, string arg)
         {
-            // No own GUI
-            // do nothing
+            webView21.CoreWebView2.ExecuteScriptAsync("window.R5.wBase.evt.event(\"" + type + "\"," + arg + ")");
         }
 
         public void R5vAppProxy_MessageFromProxy(string cmd)
         {
-            MessageReceived(cmd, _R5vAppProxy!);
+            MessageReceived(cmd, _R5vAppProxy == null ? this : _R5vAppProxy);
         }
 
         public void R5vAppProxy_Notify(int key, string arg)
         {
-            // No own GUI
-            // do nothing
+            if (key == 0)
+                return;
+            string exc = "window.R5.wBase.cmd.notify(" + key + "," + arg + ")";
+            try
+            {
+                if (webView21.CoreWebView2 != null)
+                    webView21.CoreWebView2.ExecuteScriptAsync(exc);
+            }
+            catch { }
         }
 
         bool _use_state = false;
