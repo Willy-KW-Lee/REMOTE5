@@ -15,7 +15,7 @@ let startReactDOM = e=>{
     </React.StrictMode>
   );
 
-    R5.wStyle(`
+  R5.wStyle(`
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

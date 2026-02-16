@@ -1,5 +1,5 @@
 /*
- * Remote5 wStyle - 2021.10.13~2022.12.12
+ * Remote5 wStyle - 2021.10.13~
  * Author : Willy.Lee (wiljwilj@hotmail.com)
  */
 // 0.1.1 - 2021.10.13
@@ -8,11 +8,12 @@
 // 0.3.1 - 2022.12.12 - loading wcss after load, add data-wstyle=""
 // 0.3.2 - 2023.06.06 - bugfix: parsing key:v1:v2 to key + v1:v2 (add _toKV)
 // 0.3.3 - 2023.09.16 - add R5.wStyle.load <url>, cb(object)
+// 0.4.0 - 2026.02.16 - media query css support
 
 (function(){
 	"use strict";
 	
-	var version = "0.3.3";
+	var version = "0.4.0";
 	
 	function ws( style ) {
 		var i = this;
@@ -55,7 +56,7 @@
 		
 		for (var idx = i.cssRules.length - 1; idx >= 0; idx--) {
 			var rule = i.cssRules[idx];
-			if (rule.selectorText == sel)
+			if (rule.selectorText === sel)
 				return rule;
 		}
 	}
@@ -111,33 +112,56 @@
 	}
 	
 	function _strstyle2obj( str ){
-		var oESs = {};
-		
 		var spvs = str.split(/\s*}\s*/);
-		spvs.forEach(function( spv ){
+		var ispv = 0;
+		var espv = spvs.length - 1;
+
+		var oESs = {};
+		while (ispv < espv) {
+			var spv = spvs[ispv];
 			spv = spv.split(/\s*{\s*/);
-			if (spv.length != 2)
-				return;
-			var sel = spv[0].replace(/\/\/.*/gm, '').replace(/\s+/gm, ' ').replace(/^\s+|\s+$/gm,'');
-			if (sel === "")
-				return;
-			var oSs = {}
-			oESs[sel] = oSs;
-			try {
-				var styles = spv[1].replace(/^\s+|\s+$/gm,'');
-				styles = styles.split(/\s*;\s*/);
-				styles.forEach(function( s ){
-					var pv = _toKV(s);
-					if (pv == null)
-						return;
-					oSs[pv[0]] = pv[1];
-				});
-			} catch (e) {
-				console.warn("wStyle: can't apply css - "+sel);
-			}
-		});
-		
+			ispv = _rstrstyle2obj(spvs, ispv, espv, spv, oESs);
+		}
 		return oESs;
+	}
+	function _rstrstyle2obj(spvs, ispv, espv, spv, oESs){
+		var sel = spv.length < 2 ? "" : spv[0].replace(/\/\/.*/gm, '').replace(/\s+/gm, ' ').replace(/^\s+|\s+$/gm,'');
+		if (sel === "")
+			return ispv+1;
+		if (spv.length === 2) {
+			_strkeyvalue(sel, spv[1], oESs);
+			return ispv+1;
+		}
+		else {
+			var oSss = {}
+			oESs[sel] = oSss;
+			var spvss = spv.splice(1);
+			ispv = _rstrstyle2obj(spvs, ispv, espv, spvss, oSss);
+			while (ispv < espv) {
+				var spv = spvs[ispv];
+				if (spv === "")
+					return ispv+1;
+				spv = spv.split(/\s*{\s*/);
+				ispv = _rstrstyle2obj(spvs, ispv+1, espv, spv, oSss);
+			}
+			return ispv;
+		}
+	}
+	function _strkeyvalue(sel, styles, oESs){
+		var oSs = {}
+		oESs[sel] = oSs;
+		try {
+			styles = styles.replace(/^\s+|\s+$/gm,'');
+			styles = styles.split(/\s*;\s*/);
+			styles.forEach(function( s ){
+				var pv = _toKV(s);
+				if (pv == null)
+					return;
+				oSs[pv[0]] = pv[1];
+			});
+		} catch (e) {
+			console.warn("wStyle: can't apply css - "+sel);
+		}
 	}
 	
 	function _updateScreenDensity( i, sd ){
@@ -156,12 +180,43 @@
 				}
 				
 				var styles = istyle[sel];
-				for (var prop in styles) {
-					var val = styles[prop];
-					if (typeof val == "string") {
+				var prop, val, idxR2, rule2, prop2, val2;
+				switch (rule.constructor.name)
+				{
+				case "CSSStyleRule":
+					for (prop in styles) {
+						val = styles[prop];
 						val = _evalValue(val, sd);
+						rule.style[prop] = val;
 					}
-					rule.style[prop] = val;
+					break;
+				case "CSSMediaRule":
+					for (prop in styles) {
+						val = styles[prop];
+						idxR2 = rule.cssRules.length;
+						rule.insertRule(prop+" {}", idxR2);
+						rule2 = rule.cssRules[idxR2];
+						for (prop2 in val) {
+							val2 = val[prop2];
+							val2 = _evalValue(val2, sd);
+							rule2.style[prop2] = val2;
+						}
+					}
+					break;
+				case "CSSKeyframesRule":
+					for (prop in styles) {
+						val = styles[prop];
+						rule.appendRule(prop+" {}");
+						rule2 = rule.cssRules[rule.cssRules.length - 1];
+						for (prop2 in val) {
+							val2 = val[prop2];
+							val2 = _evalValue(val2, sd);
+							rule2.style[prop2] = val2;
+						}
+					}
+					break;
+				default:
+					throw new Error(1);
 				}
 			} catch (e) {
 				console.warn("wStyle: can't apply json css - "+sel);
@@ -181,7 +236,8 @@
 		_updateWStyleInElements(bds, R5.screenDensity);
 		
 		var styles = document.getElementsByTagName("style");
-		for (var idx = 0; idx < styles.length; idx++) {
+		var idx = 0;
+		for (; idx < styles.length; idx++) {
 			var sty = styles[idx];
 			if (sty.type == null || sty.type.toLowerCase() !== "text/wcss")
 				continue;
@@ -193,7 +249,7 @@
 		}
 		
 		var links = document.getElementsByTagName("link");
-		for (var idx = 0; idx < links.length; idx++) {
+		for (idx = 0; idx < links.length; idx++) {
 			var lnk = links[idx];
 			if (lnk.rel == null || lnk.rel.toLowerCase() !== "wstylesheet")
 				continue;
