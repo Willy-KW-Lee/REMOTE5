@@ -32,7 +32,7 @@ Lang.getDeviceCountryCode = function() {
   };
 
 Lang.Locale = function(locale_code, cb) {
-    console.log("Lang().Locale - "+locale_code);
+    R5.Trace("Lang().Locale - "+locale_code);
     if (c_defaultLocaleCode == locale_code)
       handles.forEach(o=>{o[1].reset()});
     else if (locale_code != s_langCode+"-"+s_countryCode) {

@@ -36,7 +36,7 @@ var s_started = false;
 
 function onState( args )
 {
-	trace("app state : " + JSON.stringify(args));
+	trace_r5("app state : " + JSON.stringify(args));
 	if ( args.state == "start" )
 	{
 //		if ( args.device_type )
@@ -108,4 +108,10 @@ function num2str( num ) {
 	for (var idx = num.length - 3; idx > 0; idx -= 3)
 		num = num.substr(0, idx) + "," + num.substr(idx);
 	return num;
+}
+
+
+function trace_r5( str )
+{
+	console.log(str);
 }
