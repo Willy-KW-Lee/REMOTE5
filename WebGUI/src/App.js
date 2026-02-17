@@ -29,7 +29,7 @@ class App extends React.Component {
       Lang.Remove(this.langMain);
       this.langMain = null;
     }
-  } 
+  }
 
   render() {
     return (
