@@ -23,7 +23,6 @@ function updateScreenDensity( density )
 {
   densityScreen = density;
   physicalpixel_per_pixel = densityScreen ? (densityScreen / window.devicePixelRatio) : ($("html").width() / 360); // width=360px
-//	document.documentElement.style.fontSize = (physicalpixel_per_pixel*100)+'px';
 
   if (window.R5 != null && window.R5.setScreenDensity != null)
     window.R5.setScreenDensity(physicalpixel_per_pixel);
@@ -94,8 +93,7 @@ function r5_locale( locale_code ) {}
 
 function toast( msg )
 {
-	//R5.command("SHOWTOAST", {msg:msg});
-	alert(msg);//!!
+	R5.command("SHOWTOAST", {msg:msg});
 }
 
 function getCommandArguments() {
@@ -105,16 +103,9 @@ function getCommandArguments() {
 	return result;
 }
 
-
 function num2str( num ) {
 	var num = num + "";
 	for (var idx = num.length - 3; idx > 0; idx -= 3)
 		num = num.substr(0, idx) + "," + num.substr(idx);
 	return num;
-}
-
-
-function trace( str )
-{
-	//console.log(str);
 }
