@@ -19,23 +19,39 @@ function Lang(key, section) {
   return "[["+key+"]]";
 }
 
-const c_defaultLocaleCode = "en-US";
+//@@ default language
+const c_defaultLocaleCode = "en-US"; 
 var s_langCode = "en";
 var s_countryCode = "US";
 
-Lang.isRightAlign = function() {
+Lang.isRightAlign = e=>{
     return false;
   };
 
-Lang.getDeviceCountryCode = function() {
+Lang.getDeviceCountryCode = e=>{
     return s_countryCode;
   };
 
-Lang.Locale = function(locale_code, cb) {
-    R5.Trace("Lang().Locale - "+locale_code);
-    if (c_defaultLocaleCode == locale_code)
+Lang.matchLocaleCode = locale_code=>{
+    let listLocale = JSON.parse(process.env.REACT_APP_LOCALECODES);
+    let locale = R5.wLang.nearLocale(listLocale, locale_code);
+    if (locale !== null)
+      return locale;
+    return c_defaultLocaleCode;
+  };
+
+Lang.Locale = (locale_code, cb)=>{
+    let locale_code_matched = Lang.matchLocaleCode(locale_code);
+    if (locale_code_matched !== locale_code) {
+      R5.Trace("Lang().Locale - "+locale_code+" => "+locale_code_matched);
+      locale_code = locale_code_matched;
+    }
+    else {
+      R5.Trace("Lang().Locale - "+locale_code);
+    }
+    if (c_defaultLocaleCode === locale_code)
       handles.forEach(o=>{o[1].reset()});
-    else if (locale_code != s_langCode+"-"+s_countryCode) {
+    else if (locale_code !== s_langCode+"-"+s_countryCode) {
       handles.forEach(o=>{
         o[1].load(o[0]+locale_code+".json", cb);
       })
@@ -44,9 +60,9 @@ Lang.Locale = function(locale_code, cb) {
     s_countryCode = locale_code.substr(3);
   };
 
-Lang.Add = function(prefix, cb, json) {
+Lang.Add = (prefix, cb, json)=>{
     let lang;
-    if (c_defaultLocaleCode == s_langCode+"-"+s_countryCode) {
+    if (c_defaultLocaleCode === s_langCode+"-"+s_countryCode) {
       lang = (json == null) ?
         R5.wLang(prefix+c_defaultLocaleCode+".json", cb) :
         R5.wLang(json, cb);
@@ -61,7 +77,7 @@ Lang.Add = function(prefix, cb, json) {
     return lang;
   };
 
-Lang.Remove = function(handle) {
+Lang.Remove = handle=>{
     let idx = handles.length;
     for (--idx; idx >= 0; idx--) {
       if (Object.is(handles[idx][1], handle))

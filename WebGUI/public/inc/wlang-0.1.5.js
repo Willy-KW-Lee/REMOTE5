@@ -5,6 +5,7 @@
 // 0.1.1 - 2023.11.03
 // 0.1.3 - 2025.05.05 loading default lang-json
 // 0.1.4 - 2026.02.13 syntex error fixed
+// 0.1.5 - 2026.02.19 add function finding by contrycode
 
 (function(){
 	"use strict";
@@ -104,6 +105,11 @@
 		var lang = userLang.split('-')[0];
 		for (let l in list) {
 			if (list[l].split('-')[0] == lang)
+				return list[l];
+		}
+		var contry = userLang.split('-')[1];
+		for (let l in list) {
+			if (list[l].split('-')[1] == contry)
 				return list[l];
 		}
 		return null;
