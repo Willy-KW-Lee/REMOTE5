@@ -35,9 +35,10 @@
             // webView21
             // 
             webView21.AllowExternalDrop = true;
+            webView21.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             webView21.CreationProperties = null;
             webView21.DefaultBackgroundColor = Color.White;
-            webView21.Location = new Point(-2, 0);
+            webView21.Location = new Point(0, 0);
             webView21.Name = "webView21";
             webView21.Size = new Size(802, 450);
             webView21.TabIndex = 0;
@@ -50,7 +51,7 @@
             ClientSize = new Size(800, 450);
             Controls.Add(webView21);
             Name = "Form";
-            Text = "Form1";
+            Text = "Form";
             ((System.ComponentModel.ISupportInitialize)webView21).EndInit();
             ResumeLayout(false);
         }

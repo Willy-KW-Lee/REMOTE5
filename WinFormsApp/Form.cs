@@ -17,21 +17,6 @@ namespace WinFormsApp
 
         R5vAppProxy? _R5vAppProxy = null;
 
-        [DllImport("kernel32.dll")]
-        static extern IntPtr LoadLibrary(string dllToLoad);
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
-
-        IntPtr _hDllvCatchStation3 = IntPtr.Zero;
-        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        delegate IntPtr FnvCatchStation3_Open();
-        FnvCatchStation3_Open? _vCatchStation3_Open = null;
-        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        delegate int FnvCatchStation3_Close(IntPtr hvCatchStation3);
-        FnvCatchStation3_Close? _vCatchStation3_Close = null;
-
-        IntPtr _hvCatchStation3 = IntPtr.Zero;
-
         public Form()
         {
             InitializeComponent();
@@ -44,17 +29,6 @@ namespace WinFormsApp
             webView21.CoreWebView2InitializationCompleted += WebView21_CoreWebView2InitializationCompleted;
             webView21.NavigationCompleted += WebView21_NavigationCompleted;
             webView21.WebMessageReceived += WebView21_WebMessageReceived;
-
-            _hDllvCatchStation3 = LoadLibrary("vCatchStation3.dll");
-            if (_hDllvCatchStation3 != IntPtr.Zero)
-            {
-                IntPtr fn = GetProcAddress(_hDllvCatchStation3, "vCatchStation3_Open");
-                if (fn != IntPtr.Zero)
-                    _vCatchStation3_Open = (FnvCatchStation3_Open)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnvCatchStation3_Open));
-                fn = GetProcAddress(_hDllvCatchStation3, "vCatchStation3_Close");
-                if (fn != IntPtr.Zero)
-                    _vCatchStation3_Close = (FnvCatchStation3_Close)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnvCatchStation3_Close));
-            }
 
 #if DEBUG
             _R5vAppProxy = new R5vAppProxy();
@@ -88,9 +62,6 @@ namespace WinFormsApp
             webView2Settings.IsZoomControlEnabled = false;
 
             UpdateLayout();
-
-            if (_vCatchStation3_Open != null)
-                _hvCatchStation3 = _vCatchStation3_Open();
         }
 
         void UpdateLayout()
@@ -109,12 +80,6 @@ namespace WinFormsApp
 
         private void Form_FormClosed(object? sender, FormClosedEventArgs e)
         {
-            if (_vCatchStation3_Close != null && _hvCatchStation3 != IntPtr.Zero)
-            {
-                _vCatchStation3_Close(_hvCatchStation3);
-                _hvCatchStation3 = IntPtr.Zero;
-            }
-
             if (_R5vAppProxy != null)
             {
                 _R5vAppProxy.Close();
@@ -228,11 +193,11 @@ namespace WinFormsApp
                         case "state":
                             if (_use_state_proxy)
                             {
-                                stateEnvironment(_R5vAppProxy, true);
+                                stateEnvironment(_R5vAppProxy!, true);
 
                                 JObject json = new JObject();
                                 json.Add("state", "resume");
-                                _R5vAppProxy.R5vAppProxy_Event("state", json.ToString(Newtonsoft.Json.Formatting.None));
+                                _R5vAppProxy!.R5vAppProxy_Event("state", json.ToString(Newtonsoft.Json.Formatting.None));
                             }
                             break;
                     }
@@ -243,7 +208,7 @@ namespace WinFormsApp
                 return;
             }
 
-            MessageReceived(cmd, _R5vAppProxy);
+            MessageReceived(cmd, _R5vAppProxy!);
         }
 
         public void R5vAppProxy_Notify(int key, string arg)

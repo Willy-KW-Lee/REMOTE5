@@ -1,6 +1,7 @@
 import R5 from './R5';
 
-let handles = [];
+if (R5.lang_handles == null)
+  R5.lang_handles = [];
 /*
 // text align
 var s_language_right_align = {
@@ -10,8 +11,8 @@ var s_langRightAlign = false;
 s_langRightAlign = s_language_right_align[langcode] == true;
 */
 function Lang(key, section) {
-  for (let idx = handles.length - 1; idx >= 0; idx--) {
-    let v = handles[idx][1].From(key, section);
+  for (let idx = R5.lang_handles.length - 1; idx >= 0; idx--) {
+    let v = R5.lang_handles[idx][1].From(key, section);
     if (v != null)
       return v;
   }
@@ -50,9 +51,9 @@ Lang.Locale = (locale_code, cb)=>{
       R5.Trace("Lang().Locale - "+locale_code);
     }
     if (c_defaultLocaleCode === locale_code)
-      handles.forEach(o=>{o[1].reset()});
+      R5.lang_handles.forEach(o=>{o[1].reset()});
     else if (locale_code !== s_langCode+"-"+s_countryCode) {
-      handles.forEach(o=>{
+      R5.lang_handles.forEach(o=>{
         o[1].load(o[0]+locale_code+".json", cb);
       })
     }
@@ -73,15 +74,15 @@ Lang.Add = (prefix, cb, json)=>{
         R5.wLang(json);
       lang.load(prefix+s_langCode+"-"+s_countryCode+".json", cb);
     }
-    handles.push([prefix,lang]);
+    R5.lang_handles.push([prefix,lang]);
     return lang;
   };
 
 Lang.Remove = handle=>{
-    let idx = handles.length;
+    let idx = R5.lang_handles.length;
     for (--idx; idx >= 0; idx--) {
-      if (Object.is(handles[idx][1], handle))
-        handles.splice(idx, 1);
+      if (Object.is(R5.lang_handles[idx][1], handle))
+        R5.lang_handles.splice(idx, 1);
     }
   };
 
