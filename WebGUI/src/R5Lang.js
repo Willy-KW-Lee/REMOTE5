@@ -48,16 +48,18 @@ Lang.matchLocaleCode = locale_code=>{
 
 Lang.Locale = (locale_code, cb)=>{
     let locale_code_matched = Lang.matchLocaleCode(locale_code);
-    if (locale_code_matched !== locale_code) {
+    if (locale_code_matched.localeCompare(locale_code) != 0) {
       R5.Trace("Lang().Locale - "+locale_code+" => "+locale_code_matched);
       locale_code = locale_code_matched;
     }
     else {
       R5.Trace("Lang().Locale - "+locale_code);
     }
-    if (R5.c_defaultLocaleCode === locale_code)
+    if (R5.c_defaultLocaleCode.localeCompare(locale_code) == 0) {
       R5.lang_handles.forEach(o=>{o[1].reset()});
-    else if (locale_code !== R5.s_langCode+"-"+R5.s_countryCode) {
+      if (cb != null) cb();
+    }
+    else if (locale_code.localeCompare(R5.s_langCode+"-"+R5.s_countryCode) != 0) {
       R5.lang_handles.forEach(o=>{
         o[1].load(o[0]+locale_code+".json", cb);
       })
@@ -68,7 +70,7 @@ Lang.Locale = (locale_code, cb)=>{
 
 Lang.Add = (prefix, cb, json)=>{
     let lang;
-    if (R5.c_defaultLocaleCode === R5.s_langCode+"-"+R5.s_countryCode) {
+    if (R5.c_defaultLocaleCode.localeCompare(R5.s_langCode+"-"+R5.s_countryCode) == 0) {
       lang = (json == null) ?
         R5.wLang(prefix+R5.c_defaultLocaleCode+".json", cb) :
         R5.wLang(json, cb);
