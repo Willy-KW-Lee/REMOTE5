@@ -2,6 +2,13 @@ import R5 from './R5';
 
 if (R5.lang_handles == null)
   R5.lang_handles = [];
+//@@ default language
+if (R5.c_defaultLocaleCode == null)
+  R5.c_defaultLocaleCode = "en-US"; 
+if (R5.s_langCode == null)
+  R5.s_langCode = "en";
+if (R5.s_countryCode == null)
+  R5.s_countryCode = "US";
 /*
 // text align
 var s_language_right_align = {
@@ -20,17 +27,15 @@ function Lang(key, section) {
   return "[["+key+"]]";
 }
 
-//@@ default language
-const c_defaultLocaleCode = "en-US"; 
-var s_langCode = "en";
-var s_countryCode = "US";
-
 Lang.isRightAlign = e=>{
     return false;
   };
 
 Lang.getDeviceCountryCode = e=>{
-    return s_countryCode;
+    return R5.s_countryCode;
+  };
+Lang.LocaleCode = e=>{
+    return R5.s_langCode+"-"+R5.s_countryCode;
   };
 
 Lang.matchLocaleCode = locale_code=>{
@@ -38,7 +43,7 @@ Lang.matchLocaleCode = locale_code=>{
     let locale = R5.wLang.nearLocale(listLocale, locale_code);
     if (locale !== null)
       return locale;
-    return c_defaultLocaleCode;
+    return R5.c_defaultLocaleCode;
   };
 
 Lang.Locale = (locale_code, cb)=>{
@@ -50,29 +55,29 @@ Lang.Locale = (locale_code, cb)=>{
     else {
       R5.Trace("Lang().Locale - "+locale_code);
     }
-    if (c_defaultLocaleCode === locale_code)
+    if (R5.c_defaultLocaleCode === locale_code)
       R5.lang_handles.forEach(o=>{o[1].reset()});
-    else if (locale_code !== s_langCode+"-"+s_countryCode) {
+    else if (locale_code !== R5.s_langCode+"-"+R5.s_countryCode) {
       R5.lang_handles.forEach(o=>{
         o[1].load(o[0]+locale_code+".json", cb);
       })
     }
-    s_langCode = locale_code.substr(0, 2);
-    s_countryCode = locale_code.substr(3);
+    R5.s_langCode = locale_code.substr(0, 2);
+    R5.s_countryCode = locale_code.substr(3);
   };
 
 Lang.Add = (prefix, cb, json)=>{
     let lang;
-    if (c_defaultLocaleCode === s_langCode+"-"+s_countryCode) {
+    if (R5.c_defaultLocaleCode === R5.s_langCode+"-"+R5.s_countryCode) {
       lang = (json == null) ?
-        R5.wLang(prefix+c_defaultLocaleCode+".json", cb) :
+        R5.wLang(prefix+R5.c_defaultLocaleCode+".json", cb) :
         R5.wLang(json, cb);
     }
     else {
       lang = (json == null) ?
-        R5.wLang(prefix+c_defaultLocaleCode+".json") :
+        R5.wLang(prefix+R5.c_defaultLocaleCode+".json") :
         R5.wLang(json);
-      lang.load(prefix+s_langCode+"-"+s_countryCode+".json", cb);
+      lang.load(prefix+R5.s_langCode+"-"+R5.s_countryCode+".json", cb);
     }
     R5.lang_handles.push([prefix,lang]);
     return lang;
