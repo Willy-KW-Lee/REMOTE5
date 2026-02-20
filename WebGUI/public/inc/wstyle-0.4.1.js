@@ -9,6 +9,7 @@
 // 0.3.2 - 2023.06.06 - bugfix: parsing key:v1:v2 to key + v1:v2 (add _toKV)
 // 0.3.3 - 2023.09.16 - add R5.wStyle.load <url>, cb(object)
 // 0.4.0 - 2026.02.16 - media query css support
+// 0.4.1 - 2026.02.20 - stop formula support
 
 (function(){
 	"use strict";
@@ -63,7 +64,7 @@
 	
 	function _evalValue( v, sd ) {
 		var v1 = v.replace(/screenDensity/gi, sd);
-		var v2 = v1.replace(/s?[\-0-9.\(\)\+\-\/\*]*dp+/gi, function(mtch) {
+		var v2 = v1.replace(/s?[\-0-9.]*dp+/gi, function(mtch) {
 			var mm = mtch.replace(/dp/gi, "*"+sd);
 			try {
 				mm = eval(mm) + "px";
@@ -72,7 +73,7 @@
 			}
 			return mm;
 		});
-		var v3 = v2.replace(/s?[\-0-9.\(\)\+\-\/\*]*px+/gi, function(mtch) {
+		var v3 = v2.replace(/s?[\-0-9.]*px+/gi, function(mtch) {
 			var mm = mtch.replace(/px$/gi, "");
 			try {
 				mm = eval(mm) + "px";
@@ -142,7 +143,7 @@
 				if (spv === "")
 					return ispv+1;
 				spv = spv.split(/\s*{\s*/);
-				ispv = _rstrstyle2obj(spvs, ispv+1, espv, spv, oSss);
+				ispv = _rstrstyle2obj(spvs, ispv, espv, spv, oSss);
 			}
 			return ispv;
 		}
