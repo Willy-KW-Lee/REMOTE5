@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -29,6 +30,9 @@ public class R5vAppProxy : IR5vAppProxy
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     delegate IntPtr FnR5vAppRelay_Open(int port);
     FnR5vAppRelay_Open? _R5vAppRelay_Open = null;
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+    delegate int FnR5vAppRelay_AddWeb(IntPtr hR5vAppRelay, int port, string lpcszPath);
+    FnR5vAppRelay_AddWeb? _R5vAppRelay_AddWeb = null;
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     delegate int FnR5vAppRelay_Close(IntPtr hR5vAppRelay);
     FnR5vAppRelay_Close? _R5vAppRelay_Close = null;
@@ -47,6 +51,9 @@ public class R5vAppProxy : IR5vAppProxy
             IntPtr fn = GetProcAddress(_hDll, "R5vAppRelay_Open");
             if (fn != IntPtr.Zero)
                 _R5vAppRelay_Open = (FnR5vAppRelay_Open)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnR5vAppRelay_Open));
+            fn = GetProcAddress(_hDll, "R5vAppRelay_AddWeb");
+            if (fn != IntPtr.Zero)
+                _R5vAppRelay_AddWeb = (FnR5vAppRelay_AddWeb)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnR5vAppRelay_AddWeb));
             fn = GetProcAddress(_hDll, "R5vAppRelay_Close");
             if (fn != IntPtr.Zero)
                 _R5vAppRelay_Close = (FnR5vAppRelay_Close)Marshal.GetDelegateForFunctionPointer(fn, typeof(FnR5vAppRelay_Close));
@@ -71,6 +78,16 @@ public class R5vAppProxy : IR5vAppProxy
             asyncReceive();
 
         return true;
+    }
+
+    public bool AddWeb(int port, string folder)
+    {
+        if (_hR5vAppRelay == IntPtr.Zero)
+            return false;
+        if (_R5vAppRelay_AddWeb == null)
+            return false;
+
+        return _R5vAppRelay_AddWeb(_hR5vAppRelay, port, folder) != 0;
     }
 
     public void Close()
